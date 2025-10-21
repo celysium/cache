@@ -213,4 +213,9 @@ class Cache
     {
         return $this->redis->del($key);
     }
+
+    public function instance()
+    {
+        return $this->redis;
+    }
 }

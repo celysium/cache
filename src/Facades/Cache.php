@@ -5,6 +5,7 @@ namespace Celysium\Cache\Facades;
 use Illuminate\Support\Facades\Facade;
 
 /**
+ * @method static mixed instance()
  * @method static int delete(string $key)
  * @method static mixed resolve(string $key, int $ttl, callable $callback)
  * @method static \Celysium\Cache\Cache associative(bool $value = true)
