@@ -6,12 +6,12 @@ use Illuminate\Support\Facades\Facade;
 
 /**
  * @method static mixed resolve(string $key, int $ttl, callable $callback)
- * @method static mixed associative(bool $value = true)
- * @method static mixed force(bool $value = false)
- * @method static mixed retry(int $time, int $sleep = null)
- * @method static mixed timeout(int $second)
- * @method static mixed mode(string $algorithm)
- * @method static mixed sleep(int $value)
+ * @method static \Celysium\Cache\Cache associative(bool $value = true)
+ * @method static \Celysium\Cache\Cache force(bool $value = false)
+ * @method static \Celysium\Cache\Cache retry(int $time, int $sleep = null)
+ * @method static \Celysium\Cache\Cache timeout(int $second)
+ * @method static \Celysium\Cache\Cache mode(string $algorithm)
+ * @method static \Celysium\Cache\Cache sleep(int $value)
  */
 class Cache extends Facade
 {
