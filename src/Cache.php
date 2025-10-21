@@ -208,4 +208,9 @@ class Cache
 
         return $this->delay[$time] ?? 0;
     }
+
+    public function delete(string $key): int
+    {
+        return $this->redis->del($key);
+    }
 }
