@@ -94,6 +94,7 @@ class Cache
             $this->redis->del($lockKey);
             return json_decode($value, $this->associative);
         }
+        $this->redis->del($lockKey);
         return null;
     }
 
