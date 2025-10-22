@@ -16,6 +16,8 @@ class Cache
 
     private array $delays = [];
 
+    private string $lockKey;
+
     private int $sleep;
 
     private int $times;
@@ -25,6 +27,8 @@ class Cache
     private int $mode;
 
     private bool $associative = true;
+
+    private bool $fixedType = false;
 
     private bool $force = false;
 
@@ -52,23 +56,20 @@ class Cache
      */
     public function resolve(string $key, int $ttl, callable $callback): mixed
     {
-        $value = $this->redis->get($key);
-
-        if ($value && !$this->force) {
-            return json_decode($value, $this->associative);
+        if (!$this->force && $this->redis->exists($key)) {
+            return $this->getKey($key);
         }
 
-        $lockKey = sprintf("%s_%s", $this->config->lock_prefix, $key);
+        $this->lockKey = sprintf("%s_%s", $this->config->lock_prefix, $key);
 
-        if ($this->redis->set($lockKey, true, 'ex', $this->config->lock_expire, 'nx')) {
+        if ($this->redis->set($this->lockKey, true, 'ex', $this->config->lock_expire, 'nx')) {
             try {
-                $this->redis->set($key, json_encode($callback()), 'ex', $ttl);
+                $result = $callback();
+                $this->redis->set($key, ($this->fixedType ? $result : json_encode($result)), 'ex', $ttl);
 
-                $value = $this->redis->get($key);
-                $this->redis->del($lockKey);
-                return json_decode($value, $this->associative);
+                return $this->getKey($key);
             } catch (Exception $e) {
-                $this->redis->del($lockKey);
+                $this->redis->del($this->lockKey);
                 throw $e;
             }
         }
@@ -81,21 +82,25 @@ class Cache
             }
             usleep($delay);
 
-            if ($value = $this->redis->get($key)) {
-                $this->redis->del($lockKey);
-                return json_decode($value, $this->associative);
+            if ($this->redis->exists($key)) {
+                return $this->getKey($key);
             }
 
             $time++;
-            $remain = $this->redis->ttl($lockKey);
+            $remain = $this->redis->ttl($this->lockKey);
         } while ($remain > 0);
 
-        if ($value = $this->redis->get($key)) {
-            $this->redis->del($lockKey);
-            return json_decode($value, $this->associative);
+        if ($this->redis->exists($key)) {
+            return $this->getKey($key);
         }
-        $this->redis->del($lockKey);
-        return null;
+        return new Exception("can't resolve cache '$key'. please try again.");
+    }
+
+    private function getKey($key): mixed
+    {
+        $value = $this->redis->get($key);
+        $this->redis->del($this->lockKey);
+        return $this->fixedType ? $value : json_decode($value, $this->associative);
     }
 
     /**
@@ -108,6 +113,15 @@ class Cache
         return $this;
     }
 
+    /**
+     * @param bool $value
+     * @return $this
+     */
+    public function fixedType(bool $value = true): self
+    {
+        $this->fixedType = $value;
+        return $this;
+    }
 
     /**
      * @param bool $value
