@@ -51,10 +51,11 @@ class Cache
      * @param string $key
      * @param int $ttl
      * @param callable $callback
+     * @param ?callable $onFill
      * @return mixed
      * @throws Throwable
      */
-    public function resolve(string $key, int $ttl, callable $callback): mixed
+    public function resolve(string $key, int $ttl, callable $callback, callable $onFill = null): mixed
     {
         if (!$this->force && $this->redis->exists($key)) {
             return $this->getKey($key);
@@ -67,7 +68,12 @@ class Cache
                 $result = $callback();
                 $this->redis->set($key, ($this->fixedType ? $result : json_encode($result)), 'ex', $ttl);
 
-                return $this->getKey($key);
+                $result = $this->getKey($key);
+
+                if($onFill) {
+                    $onFill($result);
+                }
+                return $result;
             } catch (Exception $e) {
                 $this->redis->del($this->lockKey);
                 throw $e;
@@ -226,6 +232,11 @@ class Cache
     public function delete(string $key): int
     {
         return $this->redis->del($key);
+    }
+
+    public function set(string $key, int $ttl, mixed $value): bool
+    {
+        return $this->redis->set($key, $value, 'ex', $ttl);
     }
 
     public function instance()
