@@ -42,9 +42,9 @@ class Cache
     {
         $this->config = (object)config('cache-manager');
 
-        $this->retry($this->config->retries->times, $this->config->retries->sleep);
-        $this->timeout($this->config->retries->max_response_time);
-        $this->mode($this->config->retries->mode);
+        $this->retry($this->config->retry_times, $this->config->retry_sleep);
+        $this->timeout($this->config->max_response_time);
+        $this->mode($this->config->retry_mode);
     }
 
     /**
@@ -189,7 +189,7 @@ class Cache
      */
     private function setMaxTime(int $timeout): void
     {
-        $this->timeout = ($timeout * 1000) - $this->config->retries->tolerance;
+        $this->timeout = ($timeout * 1000) - $this->config->tolerance_response_time;
     }
 
     private function getDelay(int $time): int|null
