@@ -105,7 +105,9 @@ class Cache
     private function getKey($key): mixed
     {
         $value = $this->redis->get($key);
-        $this->redis->del($this->lockKey);
+        if($this->lockKey) {
+            $this->redis->del($this->lockKey);
+        }
         return $this->fixedType ? $value : json_decode($value, $this->associative);
     }
 
