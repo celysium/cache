@@ -67,6 +67,7 @@ class Cache
             try {
                 $result = $callback();
                 $this->redis->set($key, ($this->fixedType ? $result : json_encode($result)), 'ex', $ttl);
+                $this->redis->del($this->lockKey);
 
                 $result = $this->getKey($key);
 
@@ -105,9 +106,6 @@ class Cache
     private function getKey($key): mixed
     {
         $value = $this->redis->get($key);
-        if($this->lockKey) {
-            $this->redis->del($this->lockKey);
-        }
         return $this->fixedType ? $value : json_decode($value, $this->associative);
     }
 
