@@ -16,8 +16,6 @@ class Cache
 
     private array $delays = [];
 
-    private string $lockKey;
-
     private int $sleep;
 
     private int $times;
@@ -61,13 +59,13 @@ class Cache
             return $this->getKey($key);
         }
 
-        $this->lockKey = sprintf("%s_%s", $this->config->lock_prefix, $key);
+        $lockKey = sprintf("%s_%s", $this->config->lock_prefix, $key);
 
-        if ($this->redis->set($this->lockKey, true, 'ex', $this->config->lock_expire, 'nx')) {
+        if ($this->redis->set($lockKey, true, 'ex', $this->config->lock_expire, 'nx')) {
             try {
                 $result = $callback();
                 $this->redis->set($key, ($this->fixedType ? $result : json_encode($result)), 'ex', $ttl);
-                $this->redis->del($this->lockKey);
+                $this->redis->del($lockKey);
 
                 $result = $this->getKey($key);
 
@@ -76,7 +74,7 @@ class Cache
                 }
                 return $result;
             } catch (Exception $e) {
-                $this->redis->del($this->lockKey);
+                $this->redis->del($lockKey);
                 throw $e;
             }
         }
@@ -94,7 +92,7 @@ class Cache
             }
 
             $time++;
-            $remain = $this->redis->ttl($this->lockKey);
+            $remain = $this->redis->ttl($lockKey);
         } while ($remain > 0);
 
         if ($this->redis->exists($key)) {
