@@ -24,7 +24,7 @@ class Cache
 
     private int $timeout;
 
-    private int $mode;
+    private string $mode;
 
     private bool $associative = true;
 
