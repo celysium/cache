@@ -5,7 +5,7 @@ namespace Celysium\Cache\Facades;
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @method static mixed instance()
+ * @method static \Illuminate\Redis\RedisManager instance()
  * @method static int delete(string $key)
  * @method static bool set(string $key, int $ttl, mixed $value)
  * @method static mixed resolve(string $key, int $ttl, callable $callback, callable $onFill = null)

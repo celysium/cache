@@ -3,6 +3,7 @@
 namespace Celysium\Cache;
 
 use Exception;
+use Illuminate\Redis\RedisManager;
 use Throwable;
 
 class Cache
@@ -11,7 +12,7 @@ class Cache
     const PROGRESSIVE = 'progressive';
     const AGGRESSIVE = 'aggressive';
 
-    private mixed $redis;
+    private RedisManager $redis;
     private object $config;
 
     private array $delays = [];
@@ -66,13 +67,12 @@ class Cache
             try {
                 $result = $callback();
                 $this->redis->set($key, ($this->fixedType ? $result : json_encode($result)), 'ex', $ttl);
-                $this->redis->del($this->lockKey);
 
-                $result = $this->getKey($key);
-
+                $value = $this->getKey($key);
                 if($onFill) {
-                    $onFill($result);
+                    $onFill($value);
                 }
+                $this->redis->del($this->lockKey);
                 return $result;
             } catch (Exception $e) {
                 $this->redis->del($this->lockKey);
@@ -248,7 +248,7 @@ class Cache
         return $this->redis->set($key, $value, 'ex', $ttl);
     }
 
-    public function instance()
+    public function instance(): RedisManager
     {
         return $this->redis;
     }
