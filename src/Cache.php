@@ -250,7 +250,7 @@ class Cache
         return self::$redis->set($key, $value, 'ex', $ttl);
     }
 
-    public function instance(): self
+    public static function instance(): self
     {
         return new self();
     }
