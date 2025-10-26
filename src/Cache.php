@@ -12,8 +12,8 @@ class Cache
     const PROGRESSIVE = 'progressive';
     const AGGRESSIVE = 'aggressive';
 
-    private RedisManager $redis;
-    private object $config;
+    private static RedisManager $redis;
+    private static null|object $config = null;
 
     private array $delays = [];
 
@@ -34,17 +34,19 @@ class Cache
     private bool $force = false;
     public function __construct()
     {
-        $this->redis = app('redis');
-        $this->loadConfig();
+        if (self::$config === null) {
+            self::$redis = app('redis');
+            $this->loadConfig();
+        }
     }
 
     private function loadConfig(): void
     {
-        $this->config = (object)config('cache-manager');
+        self::$config = (object)config('cache-manager');
 
-        $this->retry($this->config->retry_times, $this->config->retry_sleep);
-        $this->timeout($this->config->max_response_time);
-        $this->mode($this->config->retry_mode);
+        $this->retry(self::$config->retry_times, self::$config->retry_sleep);
+        $this->timeout(self::$config->max_response_time);
+        $this->mode(self::$config->retry_mode);
     }
 
     /**
@@ -57,25 +59,25 @@ class Cache
      */
     public function resolve(string $key, int $ttl, callable $callback, callable $onFill = null): mixed
     {
-        if (!$this->force && $this->redis->exists($key)) {
+        if (!$this->force && self::$redis->exists($key)) {
             return $this->getKey($key);
         }
 
-        $this->lockKey = $this->lockKey ?: sprintf("%s_%s", $this->config->lock_prefix, $key);
+        $this->lockKey = $this->lockKey ?: sprintf("%s_%s", self::$config->lock_prefix, $key);
 
-        if ($this->redis->set($this->lockKey, true, 'ex', $this->config->lock_expire, 'nx')) {
+        if (self::$redis->set($this->lockKey, true, 'ex', self::$config->lock_expire, 'nx')) {
             try {
                 $result = $callback();
-                $this->redis->set($key, ($this->fixedType ? $result : json_encode($result)), 'ex', $ttl);
+                self::$redis->set($key, ($this->fixedType ? $result : json_encode($result)), 'ex', $ttl);
 
                 $value = $this->getKey($key);
                 if($onFill) {
                     $onFill($value);
                 }
-                $this->redis->del($this->lockKey);
+                self::$redis->del($this->lockKey);
                 return $result;
             } catch (Exception $e) {
-                $this->redis->del($this->lockKey);
+                self::$redis->del($this->lockKey);
                 throw $e;
             }
         }
@@ -88,15 +90,15 @@ class Cache
             }
             usleep($delay);
 
-            if ($this->redis->exists($key)) {
+            if (self::$redis->exists($key)) {
                 return $this->getKey($key);
             }
 
             $time++;
-            $remain = $this->redis->ttl($this->lockKey);
+            $remain = self::$redis->ttl($this->lockKey);
         } while ($remain > 0);
 
-        if ($this->redis->exists($key)) {
+        if (self::$redis->exists($key)) {
             return $this->getKey($key);
         }
         return new Exception("can't resolve cache '$key'. please try again.");
@@ -104,7 +106,7 @@ class Cache
 
     private function getKey($key): mixed
     {
-        $value = $this->redis->get($key);
+        $value = self::$redis->get($key);
         return $this->fixedType ? $value : json_decode($value, $this->associative);
     }
 
@@ -198,7 +200,7 @@ class Cache
      */
     private function setMaxTime(int $timeout): void
     {
-        $this->timeout = ($timeout * 1000) - $this->config->tolerance_response_time;
+        $this->timeout = ($timeout * 1000) - self::$config->tolerance_response_time;
     }
 
     private function getDelay(int $time): int|null
@@ -240,16 +242,16 @@ class Cache
 
     public function delete(string $key): int
     {
-        return $this->redis->del($key);
+        return self::$redis->del($key);
     }
 
     public function set(string $key, int $ttl, mixed $value): bool
     {
-        return $this->redis->set($key, $value, 'ex', $ttl);
+        return self::$redis->set($key, $value, 'ex', $ttl);
     }
 
-    public function instance(): RedisManager
+    public function instance(): self
     {
-        return $this->redis;
+        return new self();
     }
 }

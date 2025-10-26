@@ -22,9 +22,5 @@ class CacheServiceProvider extends ServiceProvider
             self::CONFIG_PATH,
             'cache-manager'
         );
-
-        $this->app->bind('cache-manager', function () {
-            return new Cache();
-        });
     }
 }
