@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static bool set(string $key, int $ttl, mixed $value)
  * @method static mixed resolve(string $key, int $ttl, callable $callback, callable $onFill = null)
  * @method static \Celysium\Cache\Cache associative(bool $value = true)
+ * @method static \Celysium\Cache\Cache lockKey(string $name)
  * @method static \Celysium\Cache\Cache fixedType(bool $value = false)
  * @method static \Celysium\Cache\Cache force(bool $value = false)
  * @method static \Celysium\Cache\Cache retry(int $time, int $sleep = null)

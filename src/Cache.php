@@ -24,12 +24,13 @@ class Cache
 
     private string $mode;
 
+    private string $lockKey = '';
+
     private bool $associative = true;
 
     private bool $fixedType = false;
 
     private bool $force = false;
-
     public function __construct()
     {
         $this->redis = app('redis');
@@ -59,13 +60,13 @@ class Cache
             return $this->getKey($key);
         }
 
-        $lockKey = sprintf("%s_%s", $this->config->lock_prefix, $key);
+        $this->lockKey = $this->lockKey ?: sprintf("%s_%s", $this->config->lock_prefix, $key);
 
-        if ($this->redis->set($lockKey, true, 'ex', $this->config->lock_expire, 'nx')) {
+        if ($this->redis->set($this->lockKey, true, 'ex', $this->config->lock_expire, 'nx')) {
             try {
                 $result = $callback();
                 $this->redis->set($key, ($this->fixedType ? $result : json_encode($result)), 'ex', $ttl);
-                $this->redis->del($lockKey);
+                $this->redis->del($this->lockKey);
 
                 $result = $this->getKey($key);
 
@@ -74,7 +75,7 @@ class Cache
                 }
                 return $result;
             } catch (Exception $e) {
-                $this->redis->del($lockKey);
+                $this->redis->del($this->lockKey);
                 throw $e;
             }
         }
@@ -92,7 +93,7 @@ class Cache
             }
 
             $time++;
-            $remain = $this->redis->ttl($lockKey);
+            $remain = $this->redis->ttl($this->lockKey);
         } while ($remain > 0);
 
         if ($this->redis->exists($key)) {
@@ -124,6 +125,16 @@ class Cache
     public function fixedType(bool $value = true): self
     {
         $this->fixedType = $value;
+        return $this;
+    }
+
+    /**
+     * @param string $name
+     * @return $this
+     */
+    public function lockKey(string $name): self
+    {
+        $this->lockKey = $name;
         return $this;
     }
 
