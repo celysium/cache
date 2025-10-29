@@ -15,8 +15,6 @@ class Cache
     private RedisManager $redis;
     private null|object $config = null;
 
-    private array $delays = [];
-
     private int $sleep;
 
     private int $times;
@@ -82,24 +80,18 @@ class Cache
 
         $time = 0;
         do {
-            $delay = $this->getDelay($time);
-            if($delay == null) {
-                break;
-            }
-            usleep($delay);
+            usleep($this->getDelay($time));
 
             if ($this->redis->exists($key)) {
                 return $this->getKey($key);
             }
-
             $time++;
-            $remain = $this->redis->ttl($this->lockKey);
-        } while ($remain > 0);
+        } while ($time < $this->times);
 
         if ($this->redis->exists($key)) {
             return $this->getKey($key);
         }
-        return new Exception("can't resolve cache '$key'. please try again.");
+        return null;
     }
 
     private function getKey($key): mixed
@@ -201,16 +193,16 @@ class Cache
         $this->timeout = ($timeout * 1000) - $this->config->tolerance_response_time;
     }
 
-    private function getDelay(int $time): int|null
+    private function getDelay(int $time): int
     {
         $mode = $this->mode;
 
         return $this->$mode($time);
     }
 
-    private function aggressive($time): int|null
+    private function aggressive($time): int
     {
-        return $time < $this->times ? $this->sleep : null;
+        return $this->sleep + ($time * 0);
     }
 
     private function diffused($time): int
@@ -220,22 +212,9 @@ class Cache
 
     private function progressive($time): int
     {
-        if (isset($this->delays[$time])) {
-            return $this->delays[$time];
-        }
+        $step = floor($this->timeout / (pow(2, $this->times) - 1));
 
-        $series = [];
-        for ($index = 0; $index < $this->times; $index++) {
-            $series[$index] = pow(2, $index);
-        }
-
-        $step = floor($this->timeout / array_sum($series));
-
-        for ($index = 0; $index < $this->times; $index++) {
-            $this->delays[] = $step * $series[$index];
-        }
-
-        return $this->delay[$time] ?? 0;
+        return $step * pow(2, $time);
     }
 
     public function delete(string $key): int

@@ -15,5 +15,5 @@ return [
      */
     'retry_mode'              => Celysium\Cache\Cache::PROGRESSIVE,
     'retry_sleep'             => 100, // millisecond use in aggressive mode delay every retry
-    'retry_times'             => 5,   // retry fetch cache
+    'retry_times'             => 7,   // retry fetch cache
 ];
